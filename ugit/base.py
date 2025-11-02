@@ -16,7 +16,7 @@ def write_tree(directory='.'):
                 #TODO
                 #print(full)
                  type_='blob'
-                 with open(file, 'rb') as f:                  
+                 with open(full, 'rb') as f:                  
                   oid =data.hash_object(f.read())
             elif entry.is_dir(follow_symlinks=False):
                  type_='tree'
@@ -72,7 +72,7 @@ def _empty_current_directory():
 
         for dirname in dirnames:
 
-            path = os.relpath(f'{root}/{dirname}')
+            path = os.path.relpath(f'{root}/{dirname}')
 
             if is_ignored(path):
                 continue
@@ -87,6 +87,8 @@ def read_tree(tree_oid):
         with open(path , 'wb') as f:
             f.write(data.get_object(oid))
 
+def get_oid(name):
+    return data.get_ref(name) or name
 
 
 def is_ignored(path):
@@ -95,35 +97,51 @@ def is_ignored(path):
 def commit(message):
     commit = f' tree {write_tree()}\n'
 
-    HEAD = data.get_HEAD()
+    HEAD = data.get_ref('HEAD')
     if HEAD:
         commit+= f'parent {HEAD}\n'
     commit+= '\n'
     commit+= f'{message}\n'
     
     oid = data.hash_object(commit.encode(), 'commit')
-    data.set_HEAD(oid)
+    data.update_ref('HEAD',oid)
     return oid
+
+def create_tag(name,oid):
+    data.update_ref(f'refs/tags/{name}',oid)
 
 Commit = namedtuple('Commit' , ['tree', 'parent','message'])
 
 def get_commit(oid):
-    parent=None
-    commit=data.get_object(oid , 'commit').decode()
-    lines = iter(commit.splitlines()) 
-    for line in itertools.takewhile(operator.truth , lines):
-        key , value = line.split(' ' , 1)
-        if key=='tree':
-            tree=value
-        elif key=='parent':
-            parent=value
-        else:
-            assert False , f'Unknown field{key}'
-    message='\n'.join(lines)
+    parent = None
+    tree = None
+    commit = data.get_object(oid, 'commit').decode()
 
-    return commit(tree=tree , parent=parent,message=message)    
+    lines = iter(commit.splitlines())
+
+    for line in itertools.takewhile(operator.truth, lines):
+        if not line.strip():  
+            continue
+
+        key, value = line.split(' ', 1)
+
+        if key == 'tree':
+            tree = value
+        elif key == 'parent':
+            parent = value
+        else:
+            
+            
+            
+            continue
+
+    
+    message = "\n".join(lines)
+
+    return Commit(tree=tree, parent=parent, message=message)
+  
 
 def checkout(oid):
     commit=get_commit(oid)
-    read_tree(commit)
-    data.set_HEAD(oid) 
+    read_tree(commit.tree)
+    data.update_ref('HEAD',oid)

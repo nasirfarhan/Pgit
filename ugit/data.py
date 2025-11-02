@@ -26,16 +26,19 @@ def get_object(oid , expected='blob'):
     type_ , _ , content = obj.partition(b'\x00')
     type_ = type_.decode()
 
-    if expected is None:
+    if expected is not None:
         assert type_ == expected, f'Expected{expected} , got {type_}'
     return content
 
-def set_HEAD(oid):
-    with open(f'{GET_DIR}/HEAD', 'w') as f:
+def update_ref(ref,oid):
+    ref_path=f'{GET_DIR}/{ref}'
+    os.makedirs(os.path.dirname(ref_path),exist_ok=True)
+    with open(ref_path , 'w')as f:
         f.write(oid)
 
-def get_HEAD():
-    if os.path.isfile(f'{GET_DIR}/HEAD'):
-        with open(f'{GET_DIR}/HEAD') as f:
+def get_ref(ref):
+    ref_path=f'{GET_DIR}/{ref}'
+    if os.path.isfile(ref_path):
+        with open(ref_path)as f:
             return f.read().strip()
             
