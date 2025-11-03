@@ -5,6 +5,7 @@ import base
 import data
 import sys
 import textwrap
+import subprocess
 
 def main():
     args = parse_args()
@@ -41,7 +42,7 @@ def parse_args():
 
     log_parser = commands.add_parser('log')
     log_parser.set_defaults(func=log)
-    log_parser.add_argument('oid',type=oid , nargs='?')
+    log_parser.add_argument('oid',type=oid ,default='@', nargs='?')
 
     checkout_parser = commands.add_parser('checkout')
     checkout_parser.set_defaults(func=checkout)
@@ -50,7 +51,10 @@ def parse_args():
     tag_parser= commands.add_parser('tag')
     tag_parser.set_defaults(func=tag)
     tag_parser.add_argument('name')
-    tag_parser.add_argument('oid',type=oid ,nargs='?')
+    tag_parser.add_argument('oid',type=oid ,default='@' ,nargs='?')
+
+    k_parser = commands.add_parser('k')
+    k_parser.set_defaults(func=k)
 
     return parser.parse_args()
 
@@ -78,7 +82,7 @@ def commit(args):
 
 
 def log(args):
-    oid= args.oid or data.get_ref('HEAD')
+    oid= args.oid
     while oid:
         commit=base.get_commit(oid)
         print(f'Commit: {oid}\n')
@@ -91,8 +95,37 @@ def checkout(args):
 
 
 def tag(args):
-    oid = args.oid or data.get_ref('HEAD')
+    oid = args.oid 
     base.create_tag(args.name,oid)
+
+def k(args):
+
+    dot = 'digraph commits{\n'
+    oids=set()
+    for refname , ref in data.iter_refs():
+        dot+=f'"{refname}"[shape=note]\n'
+        dot+= f'"{refname}"->{ref}\n'
+        oids.add(ref)
+
+    for oid in base.iter_commits_and_parents(oids):
+        commit = base.commit(oid)
+        dot+= f'"{oid}"[shape=box style=filled label="{oid[:10]}"]\n'
+        if commit.parent:
+            dot+=f'"{oid}"->{commit.parent}\n'
+
+    dot+='}'
+    print(dot)
+
+    with subprocess.Popen(
+        ['dot' , '-Tgtk','/dev/stdin'],
+        stdin=subprocess.PIPE) as proc:
+        proc.communicate(dot.encode())
+        
+
+
+        
+
+
 if __name__ == "__main__":
     main()
 

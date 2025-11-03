@@ -2,6 +2,7 @@ import data
 import os
 import itertools
 import operator
+import string
 from collections import namedtuple
 
 def write_tree(directory='.'):
@@ -23,7 +24,6 @@ def write_tree(directory='.'):
                  oid = write_tree(full)
                  entries.append((entry.name , oid , type_))
 
-    #TODO Actually create a tree object
     tree= ''.join(f'{type_} {oid} {name}' '\n'
                  for name ,oid , type_
                  in sorted(entries))
@@ -88,7 +88,25 @@ def read_tree(tree_oid):
             f.write(data.get_object(oid))
 
 def get_oid(name):
-    return data.get_ref(name) or name
+    if name=='@':name='HEAD'
+    #name is a ref
+    refs_to_try=[
+        f'{name}',
+        f'refs/{name}',
+        f'refs/tags/{name}',
+        f'refs/heads/{name}'
+    ]
+    for ref in refs_to_try:
+        if data.get_ref(ref):
+           return data.get_ref(ref)
+    #name is a hash
+    is_hex= all(c in string.hexdigits for c in name)
+    if len(name)==40 and is_hex:
+        return name
+    
+    assert False , f'Unknown name{name}'
+
+           
 
 
 def is_ignored(path):
@@ -139,7 +157,21 @@ def get_commit(oid):
     message = "\n".join(lines)
 
     return Commit(tree=tree, parent=parent, message=message)
-  
+def iter_commits_and_parents(oids):
+    oids = set(oids)
+    visited=set()
+    
+    while oids:
+        oid = oids.pop()
+
+        if not oid or oid in visited:
+            continue
+        visited.add(oid)
+
+        commit = get_commit(oid)
+        oids.add(commit.parent)
+
+
 
 def checkout(oid):
     commit=get_commit(oid)
