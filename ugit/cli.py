@@ -82,13 +82,11 @@ def commit(args):
 
 
 def log(args):
-    oid= args.oid
-    while oid:
+    for oid in base.iter_commits_and_parents({args.oid}):
         commit=base.get_commit(oid)
         print(f'Commit: {oid}\n')
         print(textwrap.indent(commit.message , '  '))
         print('')
-        oid= commit.parent
 
 def checkout(args):
     base.checkout(args.oid)
