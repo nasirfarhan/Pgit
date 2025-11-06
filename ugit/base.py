@@ -128,6 +128,11 @@ def commit(message):
 def create_tag(name,oid):
     data.update_ref(f'refs/tags/{name}',oid)
 
+
+def create_branch(name , oid):
+    data.update_ref(f'refs/heads/{name}',oid)
+
+
 Commit = namedtuple('Commit' , ['tree', 'parent','message'])
 
 def get_commit(oid):

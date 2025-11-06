@@ -53,6 +53,11 @@ def parse_args():
     tag_parser.add_argument('name')
     tag_parser.add_argument('oid',type=oid ,default='@' ,nargs='?')
 
+    branch_parser = commands.add_parser('branch')
+    branch_parser.set_defaults(func=branch)
+    branch_parser.add_argument('name')
+    branch_parser.add_argument('start-point', default='@',type=oid,nargs='?')
+
     k_parser = commands.add_parser('k')
     k_parser.set_defaults(func=k)
 
@@ -119,7 +124,9 @@ def k(args):
         stdin=subprocess.PIPE) as proc:
         proc.communicate(dot.encode())
         
-
+def branch(args):
+    base.create_branch(args.name,args.start_point)
+    print(f'Branch {name} created at {args.start_point[:10]}')
 
         
 
