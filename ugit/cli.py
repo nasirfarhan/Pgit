@@ -46,7 +46,7 @@ def parse_args():
 
     checkout_parser = commands.add_parser('checkout')
     checkout_parser.set_defaults(func=checkout)
-    checkout_parser.add_argument('oid', type=oid)
+    checkout_parser.add_argument('commit')
 
     tag_parser= commands.add_parser('tag')
     tag_parser.set_defaults(func=tag)
@@ -61,11 +61,14 @@ def parse_args():
     k_parser = commands.add_parser('k')
     k_parser.set_defaults(func=k)
 
+    status_parser = commands.add_parser('status')
+    status_parser.set_defaults(func=status)
+
+
     return parser.parse_args()
 
 def init(args):
-    ## print('Hello, World!')
-    data.init()
+    base.init()
     print(f'Initialised empty ugit repository in {os.getcwd()}/{data.GET_DIR}')
 
 def hash_object(args):
@@ -94,7 +97,7 @@ def log(args):
         print('')
 
 def checkout(args):
-    base.checkout(args.oid)
+    base.checkout(args.commit)
 
 
 def tag(args):
@@ -105,10 +108,12 @@ def k(args):
 
     dot = 'digraph commits{\n'
     oids=set()
-    for refname , ref in data.iter_refs():
+    for refname , ref in data.iter_refs(dref=False):
         dot+=f'"{refname}"[shape=note]\n'
         dot+= f'"{refname}"->{ref.value}\n'
-        oids.add(ref.value)
+        if not ref.symbolic:
+
+         oids.add(ref.value)
 
     for oid in base.iter_commits_and_parents(oids):
         commit = base.commit(oid)
@@ -128,7 +133,14 @@ def branch(args):
     base.create_branch(args.name,args.start_point)
     print(f'Branch {name} created at {args.start_point[:10]}')
 
-        
+def status(args):
+    HEAD = base.get_oid('@')
+    branch = base.get_branch_name()
+
+    if branch:
+        print(f'On Branch {branch}')
+    else:
+        print('HEAD detatched at {HEAD[:10]}')       
 
 
 if __name__ == "__main__":

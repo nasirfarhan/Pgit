@@ -30,30 +30,40 @@ def get_object(oid , expected='blob'):
         assert type_ == expected, f'Expected{expected} , got {type_}'
     return content
 Refvalue=namedtuple('RefValue',['symbolic','value'])
-def update_ref(ref,value):
-    assert not value.symbolic
+
+
+def update_ref(ref,value , deref=True):
     ref_path=f'{GET_DIR}/{ref}'
+    assert value.value
+    if value.symbolic:
+        value = f'ref: {value.value}'
+    else:
+        value=value.value       
     os.makedirs(os.path.dirname(ref_path),exist_ok=True)
     with open(ref_path , 'w')as f:
-        f.write(value.value)
+        f.write(value)
 
-def get_ref(ref):
+def get_ref(ref , deref=True):
+    return _get_ref_internal(ref , dreref)[0]
+
+def _get_ref_internal(ref , deref):
     ref_path=f'{GET_DIR}/{ref}'
     value=None
     if os.path.isfile(ref_path):
         with open(ref_path)as f:
             value = f.read().strip()
-
-    if value and value.startswith('ref:'):
-        return get_ref(value.split(':',1)[1].strip())
-        
-    return RefValue (symbolic=False, value=value)
+    symbolic = bool (value) and value.startswith('ref:') 
+    if symbolic:
+        value = value.split(':',1)[1].strip()
+        if deref:
+         return _get_ref_internal(value , deref=True)
+    return ref , Refvalue(symbolic=symbolic , value=value)
             
-def iter_refs():
+def iter_refs(deref=True):
     refs=['HEAD']
 
     for root , _ , filenames in os.walk(f'{GET_DIR}/refs/'):
         root=os.path.realpath(root,GET_DIR)
         refs.extend(f'{root}/{name}' for name in filenames)
     for refnames in refs:
-        yield refname , get_ref(refname)      
+        yield refname , get_ref(refname, deref=deref)      

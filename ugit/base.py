@@ -5,6 +5,11 @@ import operator
 import string
 from collections import deque, namedtuple
 
+def init():
+    data.init()
+    data.update_ref('HEAD',data.Refvalue(symbolic=True,value='refs/heads/master'))
+
+
 def write_tree(directory='.'):
     entries=[]
     with os.scandir(directory) as it:
@@ -97,7 +102,7 @@ def get_oid(name):
         f'refs/heads/{name}'
     ]
     for ref in refs_to_try:
-        if data.get_ref(ref).value:
+        if data.get_ref(ref , deref=False).value:
            return data.get_ref(ref).value
     #name is a hash
     is_hex= all(c in string.hexdigits for c in name)
@@ -107,7 +112,8 @@ def get_oid(name):
     assert False , f'Unknown name{name}'
 
            
-
+def is_branch(branch):
+    return data.get_ref(f'refs/heads/{branch}').vslue is not None
 
 def is_ignored(path):
     return '.ugit' in path.split('/')
@@ -132,6 +138,13 @@ def create_tag(name,oid):
 def create_branch(name , oid):
     data.update_ref(f'refs/heads/{name}',data.Refvalue(symbolic=False , value=oid))
 
+def get_branch_name():
+    HEAD = data.get_ref('HEAD',deref=False)
+    if not HEAD.symbolic:
+        return none
+    HEAD=HEAD.value
+    assert HEAD.startswith('refs/heads/')
+    return os.path.relpath(HEAD , 'refs/heads')
 
 Commit = namedtuple('Commit' , ['tree', 'parent','message'])
 
@@ -178,7 +191,15 @@ def iter_commits_and_parents(oids):
 
 
 
-def checkout(oid):
+def checkout(name):
+    oid= get_oid(name)
     commit=get_commit(oid)
     read_tree(commit.tree)
-    data.update_ref('HEAD',data.Refvalue(symbolic=False , value=oid))
+
+    if is_branch(name):
+         HEAD = data.RefValue (symbolic=True, value=f'refs/heads/{name}')
+    else:
+        HEAD=data.Refvalue(symbolic=False , value = oid)
+    data.update_ref('HEAD',HEAD, deref=False)
+
+
