@@ -1,6 +1,6 @@
 import os
 import hashlib
-
+from collections import namedtuple
 
 GET_DIR = ".ugit"
 
@@ -29,18 +29,25 @@ def get_object(oid , expected='blob'):
     if expected is not None:
         assert type_ == expected, f'Expected{expected} , got {type_}'
     return content
-
-def update_ref(ref,oid):
+Refvalue=namedtuple('RefValue',['symbolic','value'])
+def update_ref(ref,value):
+    assert not value.symbolic
     ref_path=f'{GET_DIR}/{ref}'
     os.makedirs(os.path.dirname(ref_path),exist_ok=True)
     with open(ref_path , 'w')as f:
-        f.write(oid)
+        f.write(value.value)
 
 def get_ref(ref):
     ref_path=f'{GET_DIR}/{ref}'
+    value=None
     if os.path.isfile(ref_path):
         with open(ref_path)as f:
-            return f.read().strip()
+            value = f.read().strip()
+
+    if value and value.startswith('ref:'):
+        return get_ref(value.split(':',1)[1].strip())
+        
+    return RefValue (symbolic=False, value=value)
             
 def iter_refs():
     refs=['HEAD']
